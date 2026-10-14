@@ -60,7 +60,7 @@ export default function PlanPage() {
   if (!profile) {
     return (
       <section className="space-y-4">
-        <h1 className="text-3xl font-bold text-emerald-900">Plan a trip</h1>
+        <h1 className="font-serif text-4xl font-bold text-emerald-950">Plan a trip</h1>
         <p className="text-lg text-gray-700">Fill in your travel profile first so we can tailor the trip to you.</p>
         <Link href="/onboarding" className="inline-block rounded-xl bg-emerald-700 px-6 py-4 text-lg font-bold text-white hover:bg-emerald-800">
           Create my profile
@@ -71,7 +71,7 @@ export default function PlanPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-bold text-emerald-900">Plan a trip, {profile.name}</h1>
+      <h1 className="font-serif text-4xl font-bold text-emerald-950">Plan a trip, {profile.name}</h1>
 
       <form onSubmit={generate} className="grid gap-5 rounded-3xl bg-white p-6 shadow-sm sm:grid-cols-2">
         <label className="space-y-2">
