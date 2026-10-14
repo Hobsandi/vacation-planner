@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Profile } from "@/lib/types";
 import { getProfile, saveProfile } from "@/lib/db/storage";
 import { LARGE_TEXT_AGE, setLargeText } from "@/components/TextSize";
+import { ArrowRightIcon } from "@/components/icons";
 
 const INTERESTS = ["food", "hiking", "museums", "beaches", "nightlife", "old towns", "nature", "shopping"];
 const input = "w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-lg focus:border-emerald-600";
@@ -69,7 +70,7 @@ export default function OnboardingPage() {
   return (
     <form onSubmit={submit} className="space-y-8 rounded-3xl bg-white p-6 shadow-sm sm:p-10">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-emerald-900">Your travel profile</h1>
+        <h1 className="font-serif text-4xl font-bold text-emerald-950">Your travel profile</h1>
         <p className="text-lg text-gray-700">A few questions so we can plan a trip that suits you.</p>
       </div>
 
@@ -156,8 +157,8 @@ export default function OnboardingPage() {
         />
       </label>
 
-      <button type="submit" className="w-full rounded-xl bg-emerald-700 px-6 py-4 text-xl font-bold text-white hover:bg-emerald-800 sm:w-auto">
-        Save and plan a trip →
+      <button type="submit" className="inline-flex w-full items-center justify-center gap-3 rounded-xl bg-emerald-700 px-6 py-4 text-xl font-bold text-white hover:bg-emerald-800 sm:w-auto">
+        Save and plan a trip <ArrowRightIcon className="h-6 w-6" />
       </button>
     </form>
   );

@@ -15,7 +15,7 @@ export default function TripsPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-3xl font-bold text-emerald-900">My trips</h1>
+      <h1 className="font-serif text-4xl font-bold text-emerald-950">My trips</h1>
       {trips.length === 0 && (
         <p className="text-gray-700">
           No saved trips yet. <Link href="/plan" className="font-semibold text-emerald-800 underline">Plan a trip</Link>

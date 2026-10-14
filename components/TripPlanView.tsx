@@ -6,7 +6,7 @@ export function TripPlanView({ plan }: { plan: TripPlan }) {
   return (
     <article className="space-y-5 rounded-3xl border-2 border-emerald-100 bg-white p-6 shadow-sm sm:p-8">
       <header>
-        <h2 className="text-2xl font-bold text-emerald-900">{plan.destination}</h2>
+        <h2 className="font-serif text-3xl font-bold text-emerald-950">{plan.destination}</h2>
         <p className="text-lg text-gray-700">{plan.pitch}</p>
       </header>
       <div className="rounded-xl bg-emerald-50 p-4">
