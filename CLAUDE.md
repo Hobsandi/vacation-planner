@@ -41,6 +41,15 @@ Data (no login, no database for the MVP – stored in the browser):
   Call these only from client components (`"use client"`). Do NOT use `/api/trips` (deprecated).
 - `/demo` page: load or clear demo data before presenting.
 
+Local data per destination (server-only, `lib/local/`):
+- Before calling Groq, `getLocalData()` fetches facts from local APIs for the destination city and adds them to the prompt;
+  the plan then gets `localSources` (shown as "Based on local data from …").
+- Supported now: Uppsala (`lib/local/uppsala.ts`): Uppsala kommun open data (ArcGIS layers), UL disruptions
+  (undocumented ul.se endpoint), Trafiklab ResRobot journeys (needs `RESROBOT_API_KEY`, otherwise skipped).
+- Add a city: create `lib/local/<city>.ts` exporting a `CityProvider` and add it to `CITIES` in `lib/local/index.ts`.
+  Reuse `arcgis.ts` (municipal map layers) and `resrobotJourney()` (any Swedish city). Every source has a 5 s timeout
+  and may fail – the plan is still generated without it.
+
 ## Rules
 - Small commits, merge to `main` at least every 2 hours via pull request.
 - Work on your own branch: `frontend`, `backend` or `ai`. `git pull origin main` often.
@@ -59,5 +68,6 @@ Add one line here when the team decides something others need to know.
 - Repo: https://github.com/Hobsandi/vacation-planner (public; owner Hobsandi, collaborators Harald333, midvintersolen)
 - MVP has 2 hours left: no Supabase/login; profile + trips in localStorage via lib/db/storage.ts.
 - AI provider: Groq (`GROQ_API_KEY`, optional `GROQ_MODEL`) – not Grok/xAI; integrated in lib/ai/plan.ts by Person C. Without a key, /api/plan returns the mock plan.
+- Local APIs per destination live in lib/local (Uppsala first). Trafiklab key: RESROBOT_API_KEY in Vercel.
 - Live site (Vercel, deploys on every push to `main`): https://vacation-planner-seven-sand.vercel.app/
 - Plan doc (shared): https://claude.ai/code/artifact/9ebfe6b6-d3bc-434c-86ce-3a18e0ac216c

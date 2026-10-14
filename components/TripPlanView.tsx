@@ -33,6 +33,18 @@ export function TripPlanView({ plan }: { plan: TripPlan }) {
         </div>
       )}
       <p className="text-lg font-semibold">Estimated cost: ~€{plan.estimatedCostPerPersonEur} (estimate)</p>
+      {plan.localSources && plan.localSources.length > 0 && (
+        <p className="text-gray-600">
+          Based on local data from{" "}
+          {plan.localSources.map((s, i) => (
+            <span key={s.url}>
+              {i > 0 && (i === plan.localSources!.length - 1 ? " and " : ", ")}
+              <a href={s.url} target="_blank" rel="noopener noreferrer" className="underline">{s.name}</a>
+            </span>
+          ))}
+          .
+        </p>
+      )}
     </article>
   );
 }

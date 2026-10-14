@@ -41,6 +41,8 @@ export const TripPlanSchema = z.object({
   alternativeTransport: TransportSchema.optional(), // e.g. the flight we avoided
   estimatedCostPerPersonEur: z.number(),
   sustainabilityTips: z.array(z.string()),
+  // Set by the server (not the AI) when local APIs were used for this destination – see lib/local.
+  localSources: z.array(z.object({ name: z.string(), url: z.string() })).optional(),
 });
 export type TripPlan = z.infer<typeof TripPlanSchema>;
 
