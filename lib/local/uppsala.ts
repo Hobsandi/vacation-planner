@@ -6,6 +6,8 @@ import { resrobotJourney } from "./resrobot";
 // Uppsala kommun open data (https://opendata.uppsala.se) – ArcGIS layers, no key needed.
 // The nature layers live on a second server that is sometimes down; failed layers are just skipped.
 const MAP = "https://kartportal.uppsala.se/mapping/rest/services/iExternaKartan";
+// Stora torget – used to tell what is in the city and what needs a bus or car.
+const CENTRE = { lat: 59.8586, lng: 17.6389 };
 const NATURE = "https://kartportal.uppsala.se/geosecma_fce/rest/services/iExternaKartan/ParkNaturFriluft/MapServer";
 
 const LAYERS: { label: string; url: string; extra?: (row: Record<string, unknown>) => string }[] = [
@@ -22,7 +24,7 @@ const LAYERS: { label: string; url: string; extra?: (row: Record<string, unknown
   {
     label: "Running/walking tracks",
     url: `${MAP}/IdrottFritid/MapServer/86`,
-    extra: (r) => [r.LANGD, r.UTGAR_FRAN && `from ${r.UTGAR_FRAN}`].filter(Boolean).join(", "),
+    extra: (r) => [r.LANGD && `length ${r.LANGD}`, r.UTGAR_FRAN && `starts at ${r.UTGAR_FRAN}`].filter(Boolean).join(", "),
   },
   ...[0, 4, 5, 6, 7].map((i) => ({ label: "Public art walks", url: `${MAP}/Kultur/MapServer/${i}` })),
 ];
@@ -31,7 +33,7 @@ const openData: LocalSource = {
   name: "Uppsala kommun öppna data",
   url: "https://opendata.uppsala.se/",
   async load({ signal }) {
-    const results = await Promise.allSettled(LAYERS.map((l) => queryLayer(l.url, signal)));
+    const results = await Promise.allSettled(LAYERS.map((l) => queryLayer(l.url, CENTRE, signal)));
     const byLabel = new Map<string, string[]>();
     results.forEach((r, i) => {
       if (r.status !== "fulfilled") return;
@@ -44,7 +46,7 @@ const openData: LocalSource = {
       .map(([label, list]) => `${label}: ${[...new Set(list)].slice(0, 15).join("; ")}`);
 
     const pumps = await countLayer("https://kartportal.uppsala.se/mapping/rest/services/iOpenData/Trafik_Cykelpumpar/MapServer/0", signal).catch(() => 0);
-    if (pumps > 0) facts.push(`There are ${pumps} public bicycle pumps around the city – Uppsala is a cycling city.`);
+    if (pumps > 0) facts.push(`There are ${pumps} free public air pumps for bicycle tyres around the city (for bikes only – not drinking water). Uppsala is a cycling city.`);
     return facts;
   },
 };
