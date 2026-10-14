@@ -52,4 +52,5 @@ API routes:
 
 ## Decisions log
 Add one line here when the team decides something others need to know.
+- Repo: https://github.com/Hobsandi/vacation-planner (private; owner Hobsandi, collaborators Harald333, midvintersolen)
 - Plan doc (shared): https://claude.ai/code/artifact/9ebfe6b6-d3bc-434c-86ce-3a18e0ac216c

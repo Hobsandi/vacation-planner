@@ -6,7 +6,7 @@ Stack: Next.js + TypeScript + Tailwind, Supabase, Claude API, Vercel. See `CLAUD
 ## Get started (each teammate, once)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Hobsandi/vacation-planner.git
 cd vacation-planner
 npm install
 cp .env.example .env.local   # fill in keys later; the app runs on mock data without them
