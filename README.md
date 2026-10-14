@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vacation Planner
 
-## Getting Started
+Hackathon project: a webapp that plans greener vacations from a user profile.
+Stack: Next.js + TypeScript + Tailwind, Supabase, Claude API, Vercel. See `CLAUDE.md` for the full rules.
 
-First, run the development server:
+## Get started (each teammate, once)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repo-url>
+cd vacation-planner
+npm install
+cp .env.example .env.local   # fill in keys later; the app runs on mock data without them
+npm run dev                  # http://localhost:3000 → "Plan a trip" works with mock data
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create your own branch:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Person | Branch | Owns |
+| --- | --- | --- |
+| A – Frontend/UX | `frontend` | `app/(pages)/`, `components/`, layout + styles |
+| B – Backend/data | `backend` | `lib/db/`, `supabase/`, `app/api/trips/`, deploy |
+| C – AI engine | `ai` | `lib/ai/`, `app/api/plan/` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+git checkout -b frontend      # or backend / ai
+```
 
-## Learn More
+## Daily loop (every ~2 hours)
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+git pull origin main          # get everyone else's work
+# ... work with Claude ...
+npm run build                 # must pass
+git add -A && git commit -m "short description"
+git push -u origin <your-branch>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Then open a pull request into `main` on GitHub and merge it (no review needed during the hackathon,
+but glance at the diff). After merging, the others run `git pull origin main`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Working with Claude
 
-## Deploy on Vercel
+Each person uses their own Claude (Claude Code is recommended) inside this repo. Claude reads `CLAUDE.md`
+automatically, so everyone shares the same context. Start each session with something like:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+> I'm Person C and own `lib/ai/` and `app/api/plan/`. Read CLAUDE.md. Today I want to …
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+When the team decides something, add a line to the "Decisions log" in `CLAUDE.md` so every Claude knows.
