@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ProfileSchema, TripRequestSchema } from "@/lib/types";
-import { generatePlan } from "@/lib/ai/plan";
+import { generatePlan, PlanError } from "@/lib/ai/plan";
 
 // Give the AI call time to finish on Vercel (default timeout is shorter).
 export const maxDuration = 60;
@@ -16,6 +16,8 @@ export async function POST(req: Request) {
     const plan = await generatePlan(body.data.profile, body.data.request);
     return NextResponse.json(plan);
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+    // `detail` shows the real cause (Groq status, validation issue) – handy when debugging the deploy.
+    const detail = e instanceof PlanError ? e.detail : String(e);
+    return NextResponse.json({ error: (e as Error).message, detail }, { status: 502 });
   }
 }
