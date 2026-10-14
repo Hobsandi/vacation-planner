@@ -95,12 +95,12 @@ export default function OnboardingPage() {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-lg font-semibold">Home city</span>
+          <span className="text-lg font-semibold">Currently staying at (city)</span>
           <input required className={input} value={profile.homeCity} onChange={(e) => update("homeCity", e.target.value)} />
         </label>
 
         <label className="block space-y-2">
-          <span className="text-lg font-semibold">Budget per person (€)</span>
+          <span className="text-lg font-semibold">Budget (€)</span>
           <input
             required
             type="number"

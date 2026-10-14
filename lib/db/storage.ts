@@ -20,7 +20,8 @@ const TRIPS_KEY = "vp.trips";
 const SavedTripSchema = z.object({
   id: z.string(),
   createdAt: z.string(),
-  request: TripRequestSchema,
+  // Trips saved before the destination became required have none – keep them instead of dropping them.
+  request: TripRequestSchema.extend({ destination: z.string().default("") }),
   plan: TripPlanSchema,
 });
 
