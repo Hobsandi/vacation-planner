@@ -16,6 +16,7 @@ Rules:
 - Prefer train or bus when the journey is realistic (roughly under 10 hours). Use a flight only if there is no sensible alternative.
 - Respect sustainability: "high" = strongly prefer low-CO₂ options and off-season/less crowded places; "low" = comfort first.
 - Respect budget per person, travel style, interests, number of travellers and any special needs.
+- If age is given, adapt the pace: travellers around 65+ get fewer, calmer activities per day, short walking distances, step-free/accessible options, rest time and comfortable direct connections (fewer changes). Younger travellers can have a busier schedule.
 - Consider the season of the dates (weather, opening times).
 - Activities are short, concrete phrases (3–5 per day). Include travel on the first and last day.
 - co2Kg = estimated kg CO₂ per person for the ROUND trip. Rough factors per passenger-km: train 0.03, bus 0.03, ferry 0.12, car 0.17 divided by travellers (max 4), flight 0.20.
