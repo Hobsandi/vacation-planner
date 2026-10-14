@@ -5,6 +5,7 @@ import { z } from "zod";
 export const ProfileSchema = z.object({
   name: z.string(),
   homeCity: z.string(),
+  age: z.number().int().positive().optional(), // used to adapt pace and the UI (larger text for older travellers)
   budgetPerPersonEur: z.number().int().positive(),
   travelStyle: z.enum(["relaxed", "balanced", "adventurous"]),
   interests: z.array(z.string()), // e.g. ["food", "hiking", "museums"]
