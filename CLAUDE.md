@@ -13,7 +13,7 @@ sign up → fill in profile → "plan a trip" form → AI-generated plan → sav
 ## Stack
 - Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
 - Supabase (auth + Postgres) – `@supabase/ssr`, `@supabase/supabase-js`
-- Claude API – `@anthropic-ai/sdk`, called ONLY from server code (API routes)
+- Groq API (OpenAI-compatible, plain `fetch`, key `GROQ_API_KEY`), called ONLY from server code (API routes)
 - Zod for validating AI output and request bodies
 - Hosted on Vercel; every push to `main` deploys
 
@@ -58,5 +58,5 @@ Data (no login, no database for the MVP – stored in the browser):
 Add one line here when the team decides something others need to know.
 - Repo: https://github.com/Hobsandi/vacation-planner (public; owner Hobsandi, collaborators Harald333, midvintersolen)
 - MVP has 2 hours left: no Supabase/login; profile + trips in localStorage via lib/db/storage.ts.
-- AI provider: Grok (xAI), integrated in lib/ai/plan.ts by Person C. Without a key, /api/plan returns the mock plan.
+- AI provider: Groq (`GROQ_API_KEY`, optional `GROQ_MODEL`) – not Grok/xAI; integrated in lib/ai/plan.ts by Person C. Without a key, /api/plan returns the mock plan.
 - Plan doc (shared): https://claude.ai/code/artifact/9ebfe6b6-d3bc-434c-86ce-3a18e0ac216c
