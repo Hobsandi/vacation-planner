@@ -1,10 +1,12 @@
 // Owner: Person B
-// TODO(B): replace the in-memory store with the Supabase `trips` table (see supabase/schema.sql).
+// DEPRECATED for the MVP: trips are stored in the browser via lib/db/storage.ts.
+// This in-memory route does not persist on Vercel (each request can hit a fresh server),
+// so the frontend should NOT call it. Kept only so old code doesn't break.
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { TripPlanSchema, TripRequestSchema, type SavedTrip } from "@/lib/types";
 
-const trips: SavedTrip[] = []; // resets on every server restart – fine for day one
+const trips: SavedTrip[] = [];
 
 export async function GET() {
   return NextResponse.json(trips);
