@@ -1,17 +1,21 @@
 // Owner: Person A
-// TODO(B): sign-up/login with Supabase before this step, then save the profile in the database.
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Profile } from "@/lib/types";
-import { loadProfile, saveProfile } from "@/components/profileStorage";
+import { getProfile, saveProfile } from "@/lib/db/storage";
+import { LARGE_TEXT_AGE, setLargeText } from "@/components/TextSize";
 
 const INTERESTS = ["food", "hiking", "museums", "beaches", "nightlife", "old towns", "nature", "shopping"];
-const input = "w-full rounded-lg border px-3 py-2";
+const input = "w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-lg focus:border-emerald-600";
+const choice = (on: boolean) =>
+  `rounded-xl border-2 px-5 py-3 text-lg font-medium capitalize ${on ? "border-emerald-700 bg-emerald-700 text-white" : "border-gray-300 bg-white hover:border-emerald-600"}`;
 
 export default function OnboardingPage() {
   const router = useRouter();
+  // Age is required in the form; it stays empty until the user types it.
+  const [age, setAge] = useState("");
   const [profile, setProfile] = useState<Profile>({
     name: "",
     homeCity: "",
@@ -19,13 +23,16 @@ export default function OnboardingPage() {
     travelStyle: "balanced",
     interests: [],
     needs: "",
-    sustainability: "high",
+    sustainability: "high", // no longer asked; the whole app favours low-CO₂ travel
   });
 
   // Prefill if the user already has a saved profile.
   useEffect(() => {
-    const saved = loadProfile();
-    if (saved) setProfile(saved);
+    const saved = getProfile();
+    if (saved) {
+      setProfile(saved);
+      if (saved.age) setAge(String(saved.age));
+    }
   }, []);
 
   function update<K extends keyof Profile>(key: K, value: Profile[K]) {
@@ -43,97 +50,93 @@ export default function OnboardingPage() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    saveProfile(profile);
+    const ageNumber = Math.round(Number(age));
+    saveProfile({ ...profile, age: ageNumber });
+    if (ageNumber >= LARGE_TEXT_AGE) setLargeText(true);
     router.push("/plan");
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6">
-      <h1 className="text-2xl font-bold">Your travel profile</h1>
+    <form onSubmit={submit} className="space-y-8 rounded-3xl bg-white p-6 shadow-sm sm:p-10">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-emerald-900">Your travel profile</h1>
+        <p className="text-lg text-gray-700">A few questions so we can plan a trip that suits you.</p>
+      </div>
 
-      <label className="block space-y-1">
-        <span className="font-medium">Name</span>
-        <input required className={input} value={profile.name} onChange={(e) => update("name", e.target.value)} />
-      </label>
+      <div className="grid gap-6 sm:grid-cols-2">
+        <label className="block space-y-2">
+          <span className="text-lg font-semibold">Name</span>
+          <input required className={input} value={profile.name} onChange={(e) => update("name", e.target.value)} />
+        </label>
 
-      <label className="block space-y-1">
-        <span className="font-medium">Home city</span>
-        <input required className={input} value={profile.homeCity} onChange={(e) => update("homeCity", e.target.value)} />
-      </label>
+        <label className="block space-y-2">
+          <span className="text-lg font-semibold">Age</span>
+          <input
+            required
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={120}
+            className={input}
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+          />
+        </label>
 
-      <label className="block space-y-1">
-        <span className="font-medium">Budget per person (€)</span>
-        <input
-          required
-          type="number"
-          min={1}
-          step={1}
-          className={input}
-          value={profile.budgetPerPersonEur}
-          onChange={(e) => update("budgetPerPersonEur", Math.max(1, Math.round(Number(e.target.value))))}
-        />
-      </label>
+        <label className="block space-y-2">
+          <span className="text-lg font-semibold">Home city</span>
+          <input required className={input} value={profile.homeCity} onChange={(e) => update("homeCity", e.target.value)} />
+        </label>
 
-      <fieldset className="space-y-2">
-        <legend className="font-medium">Travel style</legend>
-        <div className="flex gap-2">
+        <label className="block space-y-2">
+          <span className="text-lg font-semibold">Budget per person (€)</span>
+          <input
+            required
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            className={input}
+            value={profile.budgetPerPersonEur}
+            onChange={(e) => update("budgetPerPersonEur", Math.max(1, Math.round(Number(e.target.value))))}
+          />
+        </label>
+      </div>
+
+      <fieldset className="space-y-3">
+        <legend className="text-lg font-semibold">Travel pace</legend>
+        <div className="flex flex-wrap gap-3">
           {(["relaxed", "balanced", "adventurous"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => update("travelStyle", s)}
-              className={`rounded-lg border px-4 py-2 capitalize ${profile.travelStyle === s ? "border-emerald-600 bg-emerald-50" : ""}`}
-            >
+            <button key={s} type="button" aria-pressed={profile.travelStyle === s} onClick={() => update("travelStyle", s)} className={choice(profile.travelStyle === s)}>
               {s}
             </button>
           ))}
         </div>
       </fieldset>
 
-      <fieldset className="space-y-2">
-        <legend className="font-medium">Interests</legend>
-        <div className="flex flex-wrap gap-2">
+      <fieldset className="space-y-3">
+        <legend className="text-lg font-semibold">Interests</legend>
+        <div className="flex flex-wrap gap-3">
           {INTERESTS.map((i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => toggleInterest(i)}
-              className={`rounded-full border px-3 py-1 text-sm ${profile.interests.includes(i) ? "border-emerald-600 bg-emerald-50" : ""}`}
-            >
+            <button key={i} type="button" aria-pressed={profile.interests.includes(i)} onClick={() => toggleInterest(i)} className={choice(profile.interests.includes(i))}>
               {i}
             </button>
           ))}
         </div>
       </fieldset>
 
-      <label className="block space-y-1">
-        <span className="font-medium">Special needs (optional)</span>
+      <label className="block space-y-2">
+        <span className="text-lg font-semibold">Special needs (optional)</span>
         <input
           className={input}
-          placeholder="Vegetarian, wheelchair access, travelling with kids…"
+          placeholder="Walking aid, step-free access, vegetarian…"
           value={profile.needs ?? ""}
           onChange={(e) => update("needs", e.target.value)}
         />
       </label>
 
-      <fieldset className="space-y-2">
-        <legend className="font-medium">How much should we prioritise low CO₂?</legend>
-        <div className="flex gap-2">
-          {(["low", "medium", "high"] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => update("sustainability", s)}
-              className={`rounded-lg border px-4 py-2 capitalize ${profile.sustainability === s ? "border-emerald-600 bg-emerald-50" : ""}`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <button type="submit" className="rounded-lg bg-emerald-600 px-5 py-3 font-medium text-white">
-        Save and plan a trip
+      <button type="submit" className="w-full rounded-xl bg-emerald-700 px-6 py-4 text-xl font-bold text-white hover:bg-emerald-800 sm:w-auto">
+        Save and plan a trip →
       </button>
     </form>
   );

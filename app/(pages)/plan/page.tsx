@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Profile, TripPlan, TripRequest } from "@/lib/types";
 import { TripPlanView } from "@/components/TripPlanView";
-import { loadProfile } from "@/components/profileStorage";
+import { getProfile, saveTrip } from "@/lib/db/storage";
 
-const input = "w-full rounded-lg border px-3 py-2";
+const input = "w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-lg focus:border-emerald-600";
 
 export default function PlanPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -19,7 +19,7 @@ export default function PlanPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setProfile(loadProfile());
+    setProfile(getProfile());
     setChecked(true);
   }, []);
 
@@ -49,14 +49,10 @@ export default function PlanPage() {
     }
   }
 
-  async function save() {
+  function save() {
     if (!plan) return;
-    const res = await fetch("/api/trips", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request: { ...request, destination: request.destination || undefined }, plan }),
-    });
-    setSaved(res.ok);
+    saveTrip({ ...request, destination: request.destination || undefined }, plan);
+    setSaved(true);
   }
 
   if (!checked) return null;
@@ -64,9 +60,9 @@ export default function PlanPage() {
   if (!profile) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-bold">Plan a trip</h1>
-        <p className="text-gray-600">Fill in your travel profile first so we can tailor the trip to you.</p>
-        <Link href="/onboarding" className="inline-block rounded-lg bg-emerald-600 px-5 py-3 font-medium text-white">
+        <h1 className="text-3xl font-bold text-emerald-900">Plan a trip</h1>
+        <p className="text-lg text-gray-700">Fill in your travel profile first so we can tailor the trip to you.</p>
+        <Link href="/onboarding" className="inline-block rounded-xl bg-emerald-700 px-6 py-4 text-lg font-bold text-white hover:bg-emerald-800">
           Create my profile
         </Link>
       </section>
@@ -75,23 +71,23 @@ export default function PlanPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="text-2xl font-bold">Plan a trip, {profile.name}</h1>
+      <h1 className="text-3xl font-bold text-emerald-900">Plan a trip, {profile.name}</h1>
 
-      <form onSubmit={generate} className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-1">
-          <span className="font-medium">From</span>
+      <form onSubmit={generate} className="grid gap-5 rounded-3xl bg-white p-6 shadow-sm sm:grid-cols-2">
+        <label className="space-y-2">
+          <span className="text-lg font-semibold">From</span>
           <input required type="date" className={input} value={request.startDate} onChange={(e) => setRequest({ ...request, startDate: e.target.value })} />
         </label>
-        <label className="space-y-1">
-          <span className="font-medium">To</span>
+        <label className="space-y-2">
+          <span className="text-lg font-semibold">To</span>
           <input required type="date" className={input} value={request.endDate} onChange={(e) => setRequest({ ...request, endDate: e.target.value })} />
         </label>
-        <label className="space-y-1">
-          <span className="font-medium">Destination</span>
+        <label className="space-y-2">
+          <span className="text-lg font-semibold">Destination</span>
           <input className={input} placeholder="Leave empty to be surprised" value={request.destination} onChange={(e) => setRequest({ ...request, destination: e.target.value })} />
         </label>
-        <label className="space-y-1">
-          <span className="font-medium">Travellers</span>
+        <label className="space-y-2">
+          <span className="text-lg font-semibold">Travellers</span>
           <input
             required
             type="number"
@@ -101,17 +97,17 @@ export default function PlanPage() {
             onChange={(e) => setRequest({ ...request, travellers: Math.max(1, Math.round(Number(e.target.value))) })}
           />
         </label>
-        <button type="submit" disabled={loading} className="rounded-lg bg-emerald-600 px-5 py-3 font-medium text-white disabled:opacity-50 sm:col-span-2">
+        <button type="submit" disabled={loading} className="rounded-xl bg-emerald-700 px-6 py-4 text-xl font-bold text-white hover:bg-emerald-800 disabled:opacity-50 sm:col-span-2">
           {loading ? "Planning your trip…" : "Plan my trip"}
         </button>
       </form>
 
-      {error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
+      {error && <p className="rounded-xl border-2 border-red-200 bg-red-50 p-4 text-lg text-red-800">{error}</p>}
 
       {plan && (
         <>
           <TripPlanView plan={plan} />
-          <button onClick={save} disabled={saved} className="rounded-lg border px-5 py-2">
+          <button onClick={save} disabled={saved} className="rounded-xl border-2 border-emerald-700 bg-white px-6 py-3 text-lg font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-60">
             {saved ? "Saved" : "Save trip"}
           </button>
         </>
