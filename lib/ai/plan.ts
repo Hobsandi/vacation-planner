@@ -6,6 +6,7 @@ import { mockPlan } from "@/lib/mock";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // Any model listed at https://console.groq.com/docs/models works here.
 const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const FALLBACK_MODELS = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"];
 
 const SYSTEM_PROMPT = `You are a sustainable-travel planner for a webapp whose theme is "a better tomorrow".
 Plan ONE trip that genuinely fits the traveller's profile and request.
@@ -40,42 +41,98 @@ export async function generatePlan(profile: Profile, request: TripRequest): Prom
   if (!apiKey) return mockPlan;
 
   const userPrompt = `Profile: ${JSON.stringify(profile)}\nRequest: ${JSON.stringify(request)}`;
-  let lastError = "unknown error";
+  // Try the configured model first, then fall back if Groq has retired it or it misbehaves.
+  const models = [...new Set([MODEL, ...FALLBACK_MODELS])];
+  const errors: string[] = [];
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+  for (const model of models) {
+    let res: Response;
+    try {
+      res = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey.trim()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          temperature: 0.6,
+          max_tokens: 2500,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userPrompt },
+          ],
+        }),
+      });
+    } catch (e) {
+      errors.push(`${model}: network error ${(e as Error).message}`);
+      continue;
+    }
 
     if (!res.ok) {
-      lastError = `Groq API ${res.status}: ${(await res.text()).slice(0, 200)}`;
-      if (res.status === 429 || res.status >= 500) continue; // rate limit / hiccup → retry once
-      break;
+      const body = (await res.text()).slice(0, 300);
+      errors.push(`${model}: Groq ${res.status} ${body}`);
+      if (res.status === 401 || res.status === 403) break; // bad key – other models won't help
+      continue;
     }
 
     const data = await res.json();
     const text: string = data.choices?.[0]?.message?.content ?? "";
     try {
       const raw = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-      // Models sometimes send null for the optional field – treat it as missing.
-      if (raw.alternativeTransport == null) delete raw.alternativeTransport;
-      return TripPlanSchema.parse(raw);
+      const parsed = TripPlanSchema.safeParse(normalize(raw));
+      if (parsed.success) return parsed.data;
+      errors.push(`${model}: invalid plan ${JSON.stringify(parsed.error.issues).slice(0, 300)}`);
     } catch (e) {
-      lastError = `Invalid plan from model: ${(e as Error).message.slice(0, 200)}`;
+      errors.push(`${model}: unparsable output ${(e as Error).message.slice(0, 100)}`);
     }
   }
 
-  console.error("[ai] generatePlan failed:", lastError);
-  throw new Error("Could not generate a plan right now. Please try again.");
+  console.error("[ai] generatePlan failed:", errors.join(" | "));
+  throw new PlanError("Could not generate a plan right now. Please try again.", errors.join(" | "));
+}
+
+export class PlanError extends Error {
+  detail: string;
+  constructor(message: string, detail: string) {
+    super(message);
+    this.detail = detail;
+  }
+}
+
+const MODES = ["train", "bus", "car", "ferry", "flight"] as const;
+
+/** Fixes the small format slips open models make (numbers as strings, odd mode names, nulls). */
+function normalize(raw: Record<string, unknown>): Record<string, unknown> {
+  const num = (v: unknown) => {
+    if (typeof v === "number") return v;
+    const n = parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : String(v));
+  const transport = (t: unknown) => {
+    if (!t || typeof t !== "object") return undefined;
+    const o = t as Record<string, unknown>;
+    const m = str(o.mode).toLowerCase();
+    const mode =
+      MODES.find((x) => m.includes(x)) ??
+      (m.includes("plane") || m.includes("air") ? "flight" : m.includes("boat") ? "ferry" : m.includes("coach") ? "bus" : "train");
+    return { mode, description: str(o.description), co2Kg: Math.round(num(o.co2Kg)) };
+  };
+  const days = Array.isArray(raw.days) ? raw.days : [];
+  const alt = transport(raw.alternativeTransport);
+  return {
+    destination: str(raw.destination),
+    pitch: str(raw.pitch),
+    days: days.map((d, i) => {
+      const o = (d ?? {}) as Record<string, unknown>;
+      return {
+        day: i + 1,
+        title: str(o.title),
+        activities: Array.isArray(o.activities) ? o.activities.map(str) : [],
+      };
+    }),
+    transport: transport(raw.transport) ?? { mode: "train", description: "", co2Kg: 0 },
+    ...(alt ? { alternativeTransport: alt } : {}),
+    estimatedCostPerPersonEur: Math.round(num(raw.estimatedCostPerPersonEur)),
+    sustainabilityTips: Array.isArray(raw.sustainabilityTips) ? raw.sustainabilityTips.map(str) : [],
+  };
 }

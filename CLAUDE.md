@@ -59,4 +59,5 @@ Add one line here when the team decides something others need to know.
 - Repo: https://github.com/Hobsandi/vacation-planner (public; owner Hobsandi, collaborators Harald333, midvintersolen)
 - MVP has 2 hours left: no Supabase/login; profile + trips in localStorage via lib/db/storage.ts.
 - AI provider: Groq (`GROQ_API_KEY`, optional `GROQ_MODEL`) – not Grok/xAI; integrated in lib/ai/plan.ts by Person C. Without a key, /api/plan returns the mock plan.
+- Live site (Vercel, deploys on every push to `main`): https://vacation-planner-seven-sand.vercel.app/
 - Plan doc (shared): https://claude.ai/code/artifact/9ebfe6b6-d3bc-434c-86ce-3a18e0ac216c
