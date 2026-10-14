@@ -2,6 +2,8 @@
 // Uses Groq's free, OpenAI-compatible API (https://console.groq.com) via plain fetch – no extra package.
 import { TripPlanSchema, type Profile, type TripPlan, type TripRequest } from "@/lib/types";
 import { mockPlan } from "@/lib/mock";
+import { getLocalData } from "@/lib/local";
+import { sameCity } from "@/lib/local/city";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // Any model listed at https://console.groq.com/docs/models works here.
@@ -20,6 +22,7 @@ Rules:
 - Respect the traveller's budget (budgetPerPersonEur), travel style, interests and any special needs. Plan for one traveller.
 - If age is given, adapt the pace: travellers around 65+ get fewer, calmer activities per day, short walking distances, step-free/accessible options, rest time and comfortable direct connections (fewer changes). Younger travellers can have a busier schedule.
 - Consider the season of the dates (weather, opening times).
+- If the user message contains "Local data", it comes from official local APIs. Build the days around those real places, trails and walks where they fit the profile, and use their exact names. If a public-transport route is given, base "transport" on it (times, changes, vehicles). Mention relevant traffic disruptions in the activities or tips. Never invent places that sound official – prefer the local data.
 - Activities are short, concrete phrases (3–5 per day). Include travel on the first and last day (unless already at the destination).
 - co2Kg = estimated kg CO₂ per person for the ROUND trip. Rough factors per passenger-km: train 0.03, bus 0.03, ferry 0.12, car 0.17, flight 0.20.
 - alternativeTransport = the higher-CO₂ option the traveller avoided (usually a flight). Omit it if there is none.
@@ -42,7 +45,11 @@ export async function generatePlan(profile: Profile, request: TripRequest): Prom
   if (!apiKey) return mockPlan;
 
   const atDestination = sameCity(profile.homeCity, request.destination);
-  const userPrompt = `Profile: ${JSON.stringify(profile)}\nRequest: ${JSON.stringify({ ...request, alreadyAtDestination: atDestination })}`;
+  // Real places, routes and disruptions from local APIs (only for cities in lib/local).
+  const local = await getLocalData(profile, request);
+  const userPrompt =
+    `Profile: ${JSON.stringify(profile)}\nRequest: ${JSON.stringify({ ...request, alreadyAtDestination: atDestination })}` +
+    (local ? `\n\nLocal data for ${local.city}:\n${local.facts}` : "");
   // Try the configured model first, then fall back if Groq has retired it or it misbehaves.
   const models = [...new Set([MODEL, ...FALLBACK_MODELS])];
   const errors: string[] = [];
@@ -87,7 +94,7 @@ export async function generatePlan(profile: Profile, request: TripRequest): Prom
         delete plan.alternativeTransport;
       }
       const parsed = TripPlanSchema.safeParse(plan);
-      if (parsed.success) return parsed.data;
+      if (parsed.success) return local ? { ...parsed.data, localSources: local.sources } : parsed.data;
       errors.push(`${model}: invalid plan ${JSON.stringify(parsed.error.issues).slice(0, 300)}`);
     } catch (e) {
       errors.push(`${model}: unparsable output ${(e as Error).message.slice(0, 100)}`);
@@ -104,13 +111,6 @@ export class PlanError extends Error {
     super(message);
     this.detail = detail;
   }
-}
-
-/** "Berlin" and "berlin, Germany" count as the same city: compares the part before the first comma. */
-function sameCity(a: string, b: string): boolean {
-  const city = (s: string) =>
-    s.split(",")[0].trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  return city(a) !== "" && city(a) === city(b);
 }
 
 const MODES = ["train", "bus", "car", "ferry", "flight"] as const;
