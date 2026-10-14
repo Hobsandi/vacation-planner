@@ -1,40 +1,80 @@
 // Owner: Person C. Server-only – never import this from a client component.
-import Anthropic from "@anthropic-ai/sdk";
+// Uses Groq's free, OpenAI-compatible API (https://console.groq.com) via plain fetch – no extra package.
 import { TripPlanSchema, type Profile, type TripPlan, type TripRequest } from "@/lib/types";
 import { mockPlan } from "@/lib/mock";
 
-// Check https://docs.claude.com/en/docs/about-claude/models for current model names.
-const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5";
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+// Any model listed at https://console.groq.com/docs/models works here.
+const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+
+const SYSTEM_PROMPT = `You are a sustainable-travel planner for a webapp whose theme is "a better tomorrow".
+Plan ONE trip that genuinely fits the traveller's profile and request.
+
+Rules:
+- If no destination is given, pick one yourself that fits interests, budget and season.
+- Number of days = number of calendar days from startDate to endDate, inclusive. One entry per day.
+- Prefer train or bus when the journey is realistic (roughly under 10 hours). Use a flight only if there is no sensible alternative.
+- Respect sustainability: "high" = strongly prefer low-CO₂ options and off-season/less crowded places; "low" = comfort first.
+- Respect budget per person, travel style, interests, number of travellers and any special needs.
+- Consider the season of the dates (weather, opening times).
+- Activities are short, concrete phrases (3–5 per day). Include travel on the first and last day.
+- co2Kg = estimated kg CO₂ per person for the ROUND trip. Rough factors per passenger-km: train 0.03, bus 0.03, ferry 0.12, car 0.17 divided by travellers (max 4), flight 0.20.
+- alternativeTransport = the higher-CO₂ option the traveller avoided (usually a flight). Omit it if there is none.
+- All prices and CO₂ figures are estimates.
+
+Reply with ONLY a JSON object, no markdown, with exactly these keys:
+{
+  "destination": "City, Country",
+  "pitch": "1–2 sentences on why this fits the profile",
+  "days": [{ "day": 1, "title": "short title", "activities": ["..."] }],
+  "transport": { "mode": "train|bus|car|ferry|flight", "description": "...", "co2Kg": 0 },
+  "alternativeTransport": { "mode": "train|bus|car|ferry|flight", "description": "...", "co2Kg": 0 },
+  "estimatedCostPerPersonEur": 0,
+  "sustainabilityTips": ["..."]
+}`;
 
 export async function generatePlan(profile: Profile, request: TripRequest): Promise<TripPlan> {
   // No key yet? Return the mock so the rest of the team is never blocked.
-  if (!process.env.ANTHROPIC_API_KEY) return mockPlan;
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return mockPlan;
 
-  const client = new Anthropic();
-  const prompt = `You are a sustainable-travel planner. Plan a trip for this traveller.
-
-Profile: ${JSON.stringify(profile)}
-Request: ${JSON.stringify(request)}
-
-Prefer train/bus over flights when the journey is under ~10 hours, and off-season or less crowded places.
-Reply with ONLY a JSON object with these keys:
-destination, pitch, days[{day,title,activities[]}], transport{mode,description,co2Kg},
-alternativeTransport{mode,description,co2Kg}, estimatedCostPerPersonEur, sustainabilityTips[].
-mode is one of: train, bus, car, ferry, flight. co2Kg is a per-person round-trip estimate.`;
+  const userPrompt = `Profile: ${JSON.stringify(profile)}\nRequest: ${JSON.stringify(request)}`;
+  let lastError = "unknown error";
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const msg = await client.messages.create({
-      model: MODEL,
-      max_tokens: 2000,
-      messages: [{ role: "user", content: prompt }],
+    const res = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+      }),
     });
-    const text = msg.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-    const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+
+    if (!res.ok) {
+      lastError = `Groq API ${res.status}: ${(await res.text()).slice(0, 200)}`;
+      if (res.status === 429 || res.status >= 500) continue; // rate limit / hiccup → retry once
+      break;
+    }
+
+    const data = await res.json();
+    const text: string = data.choices?.[0]?.message?.content ?? "";
     try {
-      return TripPlanSchema.parse(JSON.parse(json));
-    } catch {
-      // retry once on malformed output
+      const raw = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+      // Models sometimes send null for the optional field – treat it as missing.
+      if (raw.alternativeTransport == null) delete raw.alternativeTransport;
+      return TripPlanSchema.parse(raw);
+    } catch (e) {
+      lastError = `Invalid plan from model: ${(e as Error).message.slice(0, 200)}`;
     }
   }
-  throw new Error("Could not generate a valid plan");
+
+  console.error("[ai] generatePlan failed:", lastError);
+  throw new Error("Could not generate a plan right now. Please try again.");
 }
