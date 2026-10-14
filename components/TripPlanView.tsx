@@ -22,7 +22,13 @@ export function TripPlanView({ plan }: { plan: TripPlan }) {
           </li>
         ))}
       </ol>
-      <p className="text-sm">Estimated cost: ~€{plan.estimatedCostPerPersonEur} per person</p>
+      {plan.sustainabilityTips.length > 0 && (
+        <div>
+          <p className="font-semibold">Greener travel tips</p>
+          <ul className="list-disc pl-5 text-sm">{plan.sustainabilityTips.map((t) => <li key={t}>{t}</li>)}</ul>
+        </div>
+      )}
+      <p className="text-sm">Estimated cost: ~€{plan.estimatedCostPerPersonEur} per person (estimate)</p>
     </article>
   );
 }
