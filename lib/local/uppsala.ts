@@ -1,6 +1,6 @@
 // Local data for Uppsala: municipal open data, UL traffic disruptions and Trafiklab journeys.
 import type { CityProvider, LocalSource } from "./types";
-import { countLayer, names, queryLayer } from "./arcgis";
+import { names, queryLayer } from "./arcgis";
 import { resrobotJourney } from "./resrobot";
 
 // Uppsala kommun open data (https://opendata.uppsala.se) – ArcGIS layers, no key needed.
@@ -44,9 +44,6 @@ const openData: LocalSource = {
     const facts = [...byLabel]
       .filter(([, list]) => list.length > 0)
       .map(([label, list]) => `${label}: ${[...new Set(list)].slice(0, 15).join("; ")}`);
-
-    const pumps = await countLayer("https://kartportal.uppsala.se/mapping/rest/services/iOpenData/Trafik_Cykelpumpar/MapServer/0", signal).catch(() => 0);
-    if (pumps > 0) facts.push(`There are ${pumps} free public air pumps for bicycle tyres around the city (for bikes only – not drinking water). Uppsala is a cycling city.`);
     return facts;
   },
 };
