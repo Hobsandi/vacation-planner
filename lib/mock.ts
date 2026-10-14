@@ -13,7 +13,7 @@ export const mockProfile: Profile = {
 export const mockRequest: TripRequest = {
   startDate: "2026-11-06",
   endDate: "2026-11-09",
-  travellers: 2,
+  destination: "Copenhagen",
 };
 
 export const mockPlan: TripPlan = {

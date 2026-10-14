@@ -4,9 +4,9 @@ import { z } from "zod";
 
 export const ProfileSchema = z.object({
   name: z.string(),
-  homeCity: z.string(),
+  homeCity: z.string(), // shown as "Currently staying at" – where the trip starts
   age: z.number().int().positive().optional(), // used to adapt pace and the UI (larger text for older travellers)
-  budgetPerPersonEur: z.number().int().positive(),
+  budgetPerPersonEur: z.number().int().positive(), // shown as "Budget"
   travelStyle: z.enum(["relaxed", "balanced", "adventurous"]),
   interests: z.array(z.string()), // e.g. ["food", "hiking", "museums"]
   needs: z.string().optional(), // dietary, accessibility, kids...
@@ -17,8 +17,7 @@ export type Profile = z.infer<typeof ProfileSchema>;
 export const TripRequestSchema = z.object({
   startDate: z.string(), // ISO date, e.g. "2026-11-02"
   endDate: z.string(),
-  destination: z.string().optional(), // empty = "surprise me"
-  travellers: z.number().int().positive(),
+  destination: z.string().trim().min(1), // required
 });
 export type TripRequest = z.infer<typeof TripRequestSchema>;
 
@@ -38,7 +37,7 @@ export const TripPlanSchema = z.object({
   destination: z.string(),
   pitch: z.string(), // 1–2 sentences on why this fits the profile
   days: z.array(DaySchema),
-  transport: TransportSchema,
+  transport: TransportSchema.optional(), // omitted when the traveller is already at the destination
   alternativeTransport: TransportSchema.optional(), // e.g. the flight we avoided
   estimatedCostPerPersonEur: z.number(),
   sustainabilityTips: z.array(z.string()),

@@ -12,15 +12,16 @@ const SYSTEM_PROMPT = `You are a sustainable-travel planner for a webapp whose t
 Plan ONE trip that genuinely fits the traveller's profile and request.
 
 Rules:
-- If no destination is given, pick one yourself that fits interests, budget and season.
+- profile.homeCity is where the traveller is currently staying; the trip starts and ends there.
+- If the request has "alreadyAtDestination": true, the traveller is already in the destination city: plan local days only, with no journey there or back, and OMIT "transport" and "alternativeTransport".
 - Number of days = number of calendar days from startDate to endDate, inclusive. One entry per day.
 - Prefer train or bus when the journey is realistic (roughly under 10 hours). Use a flight only if there is no sensible alternative.
 - Respect sustainability: "high" = strongly prefer low-CO₂ options and off-season/less crowded places; "low" = comfort first.
-- Respect budget per person, travel style, interests, number of travellers and any special needs.
+- Respect the traveller's budget (budgetPerPersonEur), travel style, interests and any special needs. Plan for one traveller.
 - If age is given, adapt the pace: travellers around 65+ get fewer, calmer activities per day, short walking distances, step-free/accessible options, rest time and comfortable direct connections (fewer changes). Younger travellers can have a busier schedule.
 - Consider the season of the dates (weather, opening times).
-- Activities are short, concrete phrases (3–5 per day). Include travel on the first and last day.
-- co2Kg = estimated kg CO₂ per person for the ROUND trip. Rough factors per passenger-km: train 0.03, bus 0.03, ferry 0.12, car 0.17 divided by travellers (max 4), flight 0.20.
+- Activities are short, concrete phrases (3–5 per day). Include travel on the first and last day (unless already at the destination).
+- co2Kg = estimated kg CO₂ per person for the ROUND trip. Rough factors per passenger-km: train 0.03, bus 0.03, ferry 0.12, car 0.17, flight 0.20.
 - alternativeTransport = the higher-CO₂ option the traveller avoided (usually a flight). Omit it if there is none.
 - All prices and CO₂ figures are estimates.
 
@@ -40,7 +41,8 @@ export async function generatePlan(profile: Profile, request: TripRequest): Prom
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return mockPlan;
 
-  const userPrompt = `Profile: ${JSON.stringify(profile)}\nRequest: ${JSON.stringify(request)}`;
+  const atDestination = sameCity(profile.homeCity, request.destination);
+  const userPrompt = `Profile: ${JSON.stringify(profile)}\nRequest: ${JSON.stringify({ ...request, alreadyAtDestination: atDestination })}`;
   // Try the configured model first, then fall back if Groq has retired it or it misbehaves.
   const models = [...new Set([MODEL, ...FALLBACK_MODELS])];
   const errors: string[] = [];
@@ -78,7 +80,13 @@ export async function generatePlan(profile: Profile, request: TripRequest): Prom
     const text: string = data.choices?.[0]?.message?.content ?? "";
     try {
       const raw = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-      const parsed = TripPlanSchema.safeParse(normalize(raw));
+      const plan = normalize(raw);
+      if (atDestination) {
+        // Never suggest how to travel to the city the traveller is already in.
+        delete plan.transport;
+        delete plan.alternativeTransport;
+      }
+      const parsed = TripPlanSchema.safeParse(plan);
       if (parsed.success) return parsed.data;
       errors.push(`${model}: invalid plan ${JSON.stringify(parsed.error.issues).slice(0, 300)}`);
     } catch (e) {
@@ -96,6 +104,13 @@ export class PlanError extends Error {
     super(message);
     this.detail = detail;
   }
+}
+
+/** "Berlin" and "berlin, Germany" count as the same city: compares the part before the first comma. */
+function sameCity(a: string, b: string): boolean {
+  const city = (s: string) =>
+    s.split(",")[0].trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return city(a) !== "" && city(a) === city(b);
 }
 
 const MODES = ["train", "bus", "car", "ferry", "flight"] as const;
@@ -130,7 +145,7 @@ function normalize(raw: Record<string, unknown>): Record<string, unknown> {
         activities: Array.isArray(o.activities) ? o.activities.map(str) : [],
       };
     }),
-    transport: transport(raw.transport) ?? { mode: "train", description: "", co2Kg: 0 },
+    ...(transport(raw.transport) ? { transport: transport(raw.transport) } : {}),
     ...(alt ? { alternativeTransport: alt } : {}),
     estimatedCostPerPersonEur: Math.round(num(raw.estimatedCostPerPersonEur)),
     sustainabilityTips: Array.isArray(raw.sustainabilityTips) ? raw.sustainabilityTips.map(str) : [],
